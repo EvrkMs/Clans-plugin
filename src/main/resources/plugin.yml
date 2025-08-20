@@ -1,20 +1,23 @@
-name: Clans
+name: ClanPlugin
 version: 1.0.0
-main: com.yourname.clans.ClansPlugin
-api-version: 1.21
-author: YourName
-description: Player grouping system with clans functionality
+main: com.cruiser.ClanPlugin
+api-version: '1.21'
+author: Cruiser
+description: Система кланов для Paper сервера
 
 commands:
   clan:
-    description: Main clan command
-    usage: /clan <subcommand>
-    permission: clans.use
-
+    description: Основная команда для управления кланами
+    usage: /<command> help
+    aliases: [c, clans]
+    
 permissions:
-  clans.use:
-    description: Basic clan usage permission
+  clan.use:
+    description: Разрешение на использование команд клана
     default: true
-  clans.admin:
-    description: Administrative clan permissions
+  clan.admin:
+    description: Административные команды кланов
+    default: op
+  clan.bypass.limit:
+    description: Обход лимитов клана
     default: op
