@@ -1,0 +1,6 @@
+target/
+test/
+.gradle/
+.vscode/
+build/
+_project-extract.output.txt

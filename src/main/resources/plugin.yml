@@ -1,0 +1,20 @@
+name: Clans
+version: 1.0.0
+main: com.yourname.clans.ClansPlugin
+api-version: 1.21
+author: YourName
+description: Player grouping system with clans functionality
+
+commands:
+  clan:
+    description: Main clan command
+    usage: /clan <subcommand>
+    permission: clans.use
+
+permissions:
+  clans.use:
+    description: Basic clan usage permission
+    default: true
+  clans.admin:
+    description: Administrative clan permissions
+    default: op
