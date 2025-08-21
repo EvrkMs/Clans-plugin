@@ -1,86 +1,113 @@
-# Конфигурация ClanPlugin
+# ClanPlugin Configuration
+# Версия: 1.0.0
 
 # Настройки базы данных
 database:
-  # Тип БД: sqlite или mysql
+  # Тип БД (пока только sqlite)
   type: sqlite
-  
-  # Настройки для MySQL (если type: mysql)
-  host: localhost
-  port: 3306
-  database: clans
-  username: root
-  password: password
+  # Имя файла БД
+  filename: clans.db
 
 # Настройки кланов
 clans:
-  # Минимальная длина названия
-  min_name_length: 3
-  # Максимальная длина названия
-  max_name_length: 16
-  # Минимальная длина тега
-  min_tag_length: 2
-  # Максимальная длина тега
-  max_tag_length: 5
-  # Стартовый максимум участников
-  default_max_members: 10
-  # Максимальный уровень клана
-  max_level: 10
-  # Стоимость создания клана
-  creation_cost: 1000.0
-  # Стоимость телепорта домой
-  home_teleport_cost: 100.0
-  # Задержка телепорта в секундах
-  home_teleport_delay: 5
+  # Минимальная длина имени клана
+  name-min-length: 3
+  # Максимальная длина имени клана
+  name-max-length: 32
+  # Минимальная длина тега клана
+  tag-min-length: 2
+  # Максимальная длина тега клана
+  tag-max-length: 8
+  # Начальный лимит участников
+  default-max-members: 10
+  # Увеличение лимита каждые N уровней
+  member-increase-per-levels: 5
+  # Количество добавляемых слотов
+  member-increase-amount: 2
 
-# Настройки автосохранения
-autosave:
-  # Интервал в минутах
-  interval: 5
-  # Сообщение в консоль
-  log_message: false
+# Настройки приглашений
+invites:
+  # Время жизни приглашения в минутах
+  expire-minutes: 5
+  # Могут ли рекруты приглашать новых игроков
+  recruits-can-invite: false
 
-# Настройки чата
-chat:
-  # Формат сообщения в клановом чате
-  format: "&7[&6Клан&7] &f%player%: &e%message%"
-  # Формат тега клана в обычном чате
-  tag_format: "&7[&6%tag%&7] "
+# Настройки опыта и уровней
+experience:
+  # Базовый опыт за убийство
+  base-kill-exp: 10
+  # Множитель опыта за убийство врага
+  enemy-kill-multiplier: 2.0
+  # Формула требуемого опыта: base + (level * multiplier) + (level^2 * power)
+  level-requirement:
+    base: 100
+    multiplier: 100
+    power: 10
 
-# Награды за убийства
+# Настройки отображения
+display:
+  # Показывать теги кланов над головами
+  show-tags-above-head: true
+  # Показывать теги в табе
+  show-tags-in-tab: true
+  # Показывать теги в чате
+  show-tags-in-chat: true
+  # Цвета тегов по уровням клана
+  tag-colors:
+    0: GRAY
+    5: AQUA
+    10: GREEN
+    20: YELLOW
+    30: GOLD
+    40: RED
+    50: DARK_RED
+
+# Настройки PvP
 pvp:
-  # Награда за убийство
-  kill_reward: 100.0
-  # Штраф за смерть
-  death_penalty: 50.0
-  # Давать награду за убийство союзников
-  reward_ally_kills: false
+  # Разрешить PvP между членами одного клана
+  friendly-fire: false
+  # Защита новичков (в секундах после вступления)
+  newbie-protection: 0
 
-# Уровни клана
-levels:
-  # Стоимость повышения уровня
-  upgrade_costs:
-    2: 5000.0
-    3: 10000.0
-    4: 20000.0
-    5: 35000.0
-    6: 50000.0
-    7: 75000.0
-    8: 100000.0
-    9: 150000.0
-    10: 200000.0
-  # Максимум участников на уровень
-  max_members:
-    1: 10
-    2: 15
-    3: 20
-    4: 25
-    5: 30
-    6: 35
-    7: 40
-    8: 45
-    9: 50
-    10: 60
+# Настройки чата клана
+chat:
+  # Включить чат клана
+  enabled: true
+  # Префикс для сообщений клана
+  prefix: "&7[&6CLAN&7]"
+  # Формат сообщения
+  format: "%prefix% &7%player%: &f%message%"
 
-# Отладка
-debug: false
+# Настройки статистики
+statistics:
+  # Сохранять детальную статистику
+  detailed: true
+  # Интервал сохранения статистики (в минутах)
+  save-interval: 5
+
+# Настройки производительности
+performance:
+  # Максимальное количество кланов для загрузки в топе
+  max-top-clans: 10
+  # Кешировать данные кланов (не рекомендуется при ограниченной RAM)
+  cache-enabled: false
+  # Время жизни кеша в секундах
+  cache-ttl: 60
+
+# Настройки отладки
+debug:
+  # Показывать SQL запросы
+  show-sql: false
+  # Форматировать SQL запросы
+  format-sql: false
+  # Включить статистику Hibernate
+  statistics: false
+  # Логировать все действия с кланами
+  log-actions: false
+
+# Сообщения
+messages:
+  # Префикс всех сообщений плагина
+  prefix: "&7[&6Clans&7] "
+  # Язык сообщений
+  language: ru

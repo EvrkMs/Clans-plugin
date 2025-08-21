@@ -1,23 +1,99 @@
 name: ClanPlugin
+main: com.cruiser.clans.ClanPlugin
 version: 1.0.0
-main: com.cruiser.ClanPlugin
 api-version: '1.21'
 author: Cruiser
-description: Система кланов для Paper сервера
+description: Продвинутая система кланов для Paper серверов
+website: https://github.com/cruiser/ClanPlugin
 
-commands:
-  clan:
-    description: Основная команда для управления кланами
-    usage: /<command> help
-    aliases: [c, clans]
-    
+# Зависимости
+softdepend: []
+depend: []
+
+# Права
 permissions:
   clan.use:
-    description: Разрешение на использование команд клана
+    description: Базовое право для использования системы кланов
     default: true
+  
+  clan.create:
+    description: Право на создание клана
+    default: true
+  
   clan.admin:
     description: Административные команды кланов
     default: op
-  clan.bypass.limit:
-    description: Обход лимитов клана
+    children:
+      clan.admin.reload: true
+      clan.admin.disband: true
+      clan.admin.setlevel: true
+      clan.admin.addmember: true
+      clan.admin.removemember: true
+      clan.admin.stats: true
+  
+  clan.admin.reload:
+    description: Перезагрузить конфигурацию
     default: op
+  
+  clan.admin.disband:
+    description: Распустить любой клан
+    default: op
+  
+  clan.admin.setlevel:
+    description: Установить уровень клана
+    default: op
+  
+  clan.admin.addmember:
+    description: Добавить игрока в клан
+    default: op
+  
+  clan.admin.removemember:
+    description: Удалить игрока из клана
+    default: op
+  
+  clan.admin.stats:
+    description: Просмотр статистики БД
+    default: op
+  
+  clan.bypass.limit:
+    description: Игнорировать лимит участников клана
+    default: op
+  
+  clan.bypass.cooldown:
+    description: Игнорировать кулдауны команд
+    default: op
+
+# Команды
+commands:
+  clan:
+    description: Основная команда системы кланов
+    usage: |
+      /<command> help - Показать помощь
+      /<command> create <название> <тег> - Создать клан
+      /<command> disband - Распустить клан
+      /<command> info [клан] - Информация о клане
+      /<command> list - Список кланов
+      /<command> top - Топ кланов
+      /<command> invite <игрок> - Пригласить игрока
+      /<command> accept - Принять приглашение
+      /<command> decline - Отклонить приглашение
+      /<command> leave - Покинуть клан
+      /<command> kick <игрок> - Выгнать игрока
+      /<command> promote <игрок> - Повысить игрока
+      /<command> demote <игрок> - Понизить игрока
+      /<command> transfer <игрок> - Передать лидерство
+      /<command> chat [сообщение] - Чат клана
+    aliases: [c, clans, guild]
+    permission: clan.use
+  
+  clanadmin:
+    description: Административные команды кланов
+    usage: |
+      /<command> reload - Перезагрузить конфигурацию
+      /<command> disband <клан> - Распустить клан
+      /<command> setlevel <клан> <уровень> - Установить уровень
+      /<command> addmember <игрок> <клан> - Добавить в клан
+      /<command> removemember <игрок> - Удалить из клана
+      /<command> stats - Статистика БД
+    aliases: [ca, cadmin]
+    permission: clan.admin
