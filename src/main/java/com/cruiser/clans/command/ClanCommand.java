@@ -124,7 +124,13 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleDisband(Player player) {
-        plugin.getClanService().disbandClan(player);
+        plugin.getClanService().disbandClan(player).exceptionally(ex -> {
+            plugin.getData().runSync(() ->
+                player.sendMessage(Component.text("Ошибка при распуске клана", NamedTextColor.RED))
+            );
+            plugin.getLogger().warning("Ошибка disband: " + ex.getMessage());
+            return false;
+        });
     }
     
     private void handleInfo(Player player, String[] args) {
@@ -190,11 +196,23 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         }
         
         String targetName = args[1];
-        plugin.getClanService().invitePlayer(player, targetName);
+        plugin.getClanService().invitePlayer(player, targetName).exceptionally(ex -> {
+            plugin.getData().runSync(() ->
+                player.sendMessage(Component.text("Ошибка при приглашении игрока", NamedTextColor.RED))
+            );
+            plugin.getLogger().warning("Ошибка invite: " + ex.getMessage());
+            return false;
+        });
     }
     
     private void handleAccept(Player player) {
-        plugin.getClanService().acceptInvite(player);
+        plugin.getClanService().acceptInvite(player).exceptionally(ex -> {
+            plugin.getData().runSync(() ->
+                player.sendMessage(Component.text("Ошибка при принятии приглашения", NamedTextColor.RED))
+            );
+            plugin.getLogger().warning("Ошибка accept: " + ex.getMessage());
+            return false;
+        });
     }
     
     private void handleDecline(Player player) {
@@ -282,11 +300,23 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     private void handleChat(Player player, String[] args) {
         if (args.length < 2) {
             // Переключить режим чата
-            plugin.getChatService().toggleClanChatMode(player);
+            plugin.getChatService().toggleClanChatMode(player).exceptionally(ex -> {
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Ошибка переключения чата", NamedTextColor.RED))
+                );
+                plugin.getLogger().warning("Ошибка toggle chat: " + ex.getMessage());
+                return false;
+            });
         } else {
             // Отправить сообщение в чат клана
             String message = String.join(" ", Arrays.copyOfRange(args, 1, args.length));
-            plugin.getChatService().sendClanMessage(player, message);
+            plugin.getChatService().sendClanMessage(player, message).exceptionally(ex -> {
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Ошибка отправки сообщения", NamedTextColor.RED))
+                );
+                plugin.getLogger().warning("Ошибка clan chat: " + ex.getMessage());
+                return false;
+            });
         }
     }
     
