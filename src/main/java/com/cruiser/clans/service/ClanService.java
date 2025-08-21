@@ -126,13 +126,17 @@ public class ClanService {
         
         return plugin.getData().findPlayerByUuid(uuid).thenCompose(optPlayer -> {
             if (optPlayer.isEmpty() || !optPlayer.get().isInClan()) {
-                player.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED))
+                );
                 return CompletableFuture.completedFuture(false);
             }
-            
+
             ClanPlayerEntity clanPlayer = optPlayer.get();
             if (clanPlayer.getRole() != ClanRole.LEADER) {
-                player.sendMessage(Component.text("Только лидер может распустить клан", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Только лидер может распустить клан", NamedTextColor.RED))
+                );
                 return CompletableFuture.completedFuture(false);
             }
             
@@ -170,13 +174,17 @@ public class ClanService {
         
         return plugin.getData().findPlayerByUuid(inviterUuid).thenCompose(optInviter -> {
             if (optInviter.isEmpty() || !optInviter.get().isInClan()) {
-                inviter.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    inviter.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED))
+                );
                 return CompletableFuture.completedFuture(false);
             }
-            
+
             ClanPlayerEntity inviterPlayer = optInviter.get();
             if (!inviterPlayer.getRole().canInvite()) {
-                inviter.sendMessage(Component.text("У вас нет прав для приглашения игроков", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    inviter.sendMessage(Component.text("У вас нет прав для приглашения игроков", NamedTextColor.RED))
+                );
                 return CompletableFuture.completedFuture(false);
             }
             
@@ -185,14 +193,18 @@ public class ClanService {
             // Проверяем лимит участников
             return plugin.getData().getClanMembers(clan.getId()).thenCompose(members -> {
                 if (members.size() >= clan.getMaxMembers()) {
-                    inviter.sendMessage(Component.text("Достигнут лимит участников клана", NamedTextColor.RED));
+                    plugin.getData().runSync(() ->
+                        inviter.sendMessage(Component.text("Достигнут лимит участников клана", NamedTextColor.RED))
+                    );
                     return CompletableFuture.completedFuture(false);
                 }
                 
                 // Ищем целевого игрока
                 Player target = plugin.getServer().getPlayer(targetName);
                 if (target == null || !target.isOnline()) {
-                    inviter.sendMessage(Component.text("Игрок не найден или оффлайн", NamedTextColor.RED));
+                    plugin.getData().runSync(() ->
+                        inviter.sendMessage(Component.text("Игрок не найден или оффлайн", NamedTextColor.RED))
+                    );
                     return CompletableFuture.completedFuture(false);
                 }
                 
@@ -208,12 +220,16 @@ public class ClanService {
                         targetPlayer = optTarget.get();
                         
                         if (targetPlayer.isInClan()) {
-                            inviter.sendMessage(Component.text("Игрок уже состоит в клане", NamedTextColor.RED));
+                            plugin.getData().runSync(() ->
+                                inviter.sendMessage(Component.text("Игрок уже состоит в клане", NamedTextColor.RED))
+                            );
                             return CompletableFuture.completedFuture(false);
                         }
-                        
+
                         if (targetPlayer.hasPendingInvite()) {
-                            inviter.sendMessage(Component.text("У игрока уже есть активное приглашение", NamedTextColor.RED));
+                            plugin.getData().runSync(() ->
+                                inviter.sendMessage(Component.text("У игрока уже есть активное приглашение", NamedTextColor.RED))
+                            );
                             return CompletableFuture.completedFuture(false);
                         }
                     }
@@ -250,19 +266,25 @@ public class ClanService {
         
         return plugin.getData().findPlayerByUuid(uuid).thenCompose(optPlayer -> {
             if (optPlayer.isEmpty()) {
-                player.sendMessage(Component.text("У вас нет активных приглашений", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("У вас нет активных приглашений", NamedTextColor.RED))
+                );
                 return CompletableFuture.completedFuture(false);
             }
-            
+
             ClanPlayerEntity clanPlayer = optPlayer.get();
-            
+
             if (!clanPlayer.hasPendingInvite()) {
-                player.sendMessage(Component.text("У вас нет активных приглашений", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("У вас нет активных приглашений", NamedTextColor.RED))
+                );
                 return CompletableFuture.completedFuture(false);
             }
-            
+
             if (clanPlayer.isInClan()) {
-                player.sendMessage(Component.text("Вы уже состоите в клане", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Вы уже состоите в клане", NamedTextColor.RED))
+                );
                 clanPlayer.clearInvite();
                 plugin.getData().savePlayer(clanPlayer);
                 return CompletableFuture.completedFuture(false);
@@ -272,7 +294,9 @@ public class ClanService {
             
             return plugin.getData().findClanById(clanId).thenCompose(optClan -> {
                 if (optClan.isEmpty()) {
-                    player.sendMessage(Component.text("Клан больше не существует", NamedTextColor.RED));
+                    plugin.getData().runSync(() ->
+                        player.sendMessage(Component.text("Клан больше не существует", NamedTextColor.RED))
+                    );
                     clanPlayer.clearInvite();
                     return plugin.getData().savePlayer(clanPlayer).thenApply(v -> false);
                 }
@@ -282,7 +306,9 @@ public class ClanService {
                 // Проверяем лимит участников
                 return plugin.getData().getClanMembers(clanId).thenCompose(members -> {
                     if (members.size() >= clan.getMaxMembers()) {
-                        player.sendMessage(Component.text("В клане достигнут лимит участников", NamedTextColor.RED));
+                        plugin.getData().runSync(() ->
+                            player.sendMessage(Component.text("В клане достигнут лимит участников", NamedTextColor.RED))
+                        );
                         clanPlayer.clearInvite();
                         return plugin.getData().savePlayer(clanPlayer).thenApply(v -> false);
                     }

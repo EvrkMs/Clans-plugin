@@ -36,7 +36,9 @@ public class ClanChatService {
         
         return plugin.getData().findPlayerByUuid(senderUuid).thenCompose(optSender -> {
             if (optSender.isEmpty() || !optSender.get().isInClan()) {
-                sender.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED));
+                plugin.getData().runSync(() ->
+                    sender.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED))
+                );
                 return CompletableFuture.completedFuture(false);
             }
             
