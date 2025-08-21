@@ -11,6 +11,7 @@ import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import com.cruiser.clans.ClanPlugin;
+import com.cruiser.clans.orm.entity.ClanEntity;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -312,24 +313,35 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("help", "create", "disband", "info", "invite", 
-                                "accept", "decline", "leave", "kick", "list", "top");
+            return Arrays.asList(
+                "help", "create", "disband", "info", "invite",
+                "accept", "decline", "leave", "kick",
+                "promote", "demote", "transfer", "chat", "c",
+                "list", "top"
+            );
         }
-        
+
         if (args.length == 2) {
             switch (args[0].toLowerCase()) {
-                case "invite", "kick":
+                case "invite", "kick", "promote", "demote", "transfer":
                     // Возвращаем список онлайн игроков
                     return plugin.getServer().getOnlinePlayers().stream()
                         .map(Player::getName)
                         .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
                         .toList();
                 case "info":
-                    // TODO: Возвращать список кланов
-                    break;
+                    try {
+                        return plugin.getData().query(session ->
+                            session.createQuery("SELECT c.name FROM ClanEntity c", String.class).list()
+                        ).join().stream()
+                            .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                            .toList();
+                    } catch (Exception ignored) {
+                        return new ArrayList<>();
+                    }
             }
         }
-        
+
         return new ArrayList<>();
     }
 }

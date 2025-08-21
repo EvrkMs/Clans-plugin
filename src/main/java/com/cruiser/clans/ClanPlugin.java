@@ -1,14 +1,20 @@
 package com.cruiser.clans;
 
+import java.util.Objects;
 import java.util.logging.Level;
 
 import org.bukkit.plugin.java.JavaPlugin;
 import org.slf4j.Logger;
 
+import com.cruiser.clans.command.ClanAdminCommand;
+import com.cruiser.clans.command.ClanCommand;
+import com.cruiser.clans.listener.ChatListener;
 import com.cruiser.clans.listener.PlayerListener;
 import com.cruiser.clans.orm.DataManager;
 import com.cruiser.clans.orm.OrmManager;
 import com.cruiser.clans.service.ClanDisplayService;
+import com.cruiser.clans.service.ClanChatService;
+import com.cruiser.clans.service.ClanMemberService;
 import com.cruiser.clans.service.ClanService;
 
 import net.kyori.adventure.text.Component;
@@ -21,6 +27,8 @@ public final class ClanPlugin extends JavaPlugin {
     private DataManager dataManager;
     private ClanDisplayService displayService;
     private ClanService clanService;
+    private ClanMemberService memberService;
+    private ClanChatService chatService;
     
     @Override
     public void onEnable() {
@@ -44,6 +52,8 @@ public final class ClanPlugin extends JavaPlugin {
             // Инициализация сервисов
             this.displayService = new ClanDisplayService(this);
             this.clanService = new ClanService(this, displayService);
+            this.memberService = new ClanMemberService(this, displayService);
+            this.chatService = new ClanChatService(this);
             
             // Проверка подключения к БД
             validateDatabase();
@@ -73,7 +83,10 @@ public final class ClanPlugin extends JavaPlugin {
         if (displayService != null) {
             displayService.shutdown();
         }
-        
+        if (chatService != null) {
+            chatService.clearAllChatModes();
+        }
+
         // Закрытие ORM
         if (ormManager != null) {
             ormManager.stop();
@@ -102,16 +115,26 @@ public final class ClanPlugin extends JavaPlugin {
      * Регистрация команд
      */
     private void registerCommands() {
-        // TODO: Регистрация команд
-        // Objects.requireNonNull(getCommand("clan"), "clan command not found in plugin.yml")
-        //     .setExecutor(new ClanCommand(this));
+        var clanCmd = new ClanCommand(this);
+        Objects.requireNonNull(getCommand("clan"), "clan command not found in plugin.yml")
+            .setExecutor(clanCmd);
+        Objects.requireNonNull(getCommand("clan"))
+            .setTabCompleter(clanCmd);
+
+        var adminCmd = new ClanAdminCommand(this);
+        Objects.requireNonNull(getCommand("clanadmin"), "clanadmin command not found in plugin.yml")
+            .setExecutor(adminCmd);
+        Objects.requireNonNull(getCommand("clanadmin"))
+            .setTabCompleter(adminCmd);
     }
     
     /**
      * Регистрация слушателей событий
      */
     private void registerListeners() {
-        getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+        var pm = getServer().getPluginManager();
+        pm.registerEvents(new PlayerListener(this), this);
+        pm.registerEvents(new ChatListener(this), this);
     }
     
     // Геттеры для доступа к сервисам
@@ -126,6 +149,14 @@ public final class ClanPlugin extends JavaPlugin {
     
     public ClanService getClanService() {
         return clanService;
+    }
+
+    public ClanMemberService getMemberService() {
+        return memberService;
+    }
+
+    public ClanChatService getChatService() {
+        return chatService;
     }
     
     public OrmManager getOrmManager() {
