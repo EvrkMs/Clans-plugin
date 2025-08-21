@@ -1,5 +1,7 @@
 package com.cruiser.clans.listener;
 
+import java.util.Locale;
+
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -10,6 +12,8 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import com.cruiser.clans.ClanPlugin;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 /**
@@ -103,29 +107,33 @@ public class ChatListener implements Listener {
     /**
      * Получить цвет тега клана по уровню
      */
-    private net.kyori.adventure.text.format.NamedTextColor getClanTagColor(int level) {
-        var config = plugin.getConfig().getConfigurationSection("display.tag-colors");
-        if (config == null) {
-            return net.kyori.adventure.text.format.NamedTextColor.GRAY;
-        }
-        
-        // Ищем подходящий уровень
-        int closestLevel = 0;
-        for (String key : config.getKeys(false)) {
-            try {
-                int configLevel = Integer.parseInt(key);
-                if (configLevel <= level && configLevel > closestLevel) {
-                    closestLevel = configLevel;
-                }
-            } catch (NumberFormatException ignored) {}
-        }
-        
-        String colorName = config.getString(String.valueOf(closestLevel), "GRAY");
-        
-        try {
-            return net.kyori.adventure.text.format.NamedTextColor.valueOf(colorName.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return net.kyori.adventure.text.format.NamedTextColor.GRAY;
-        }
+private TextColor getClanTagColor(int level) {
+    var config = plugin.getConfig().getConfigurationSection("display.tag-colors");
+    if (config == null) {
+        return NamedTextColor.GRAY;
     }
+
+    int closestLevel = 0;
+    for (String key : config.getKeys(false)) {
+        try {
+            int configLevel = Integer.parseInt(key);
+            if (configLevel <= level && configLevel > closestLevel) {
+                closestLevel = configLevel;
+            }
+        } catch (NumberFormatException ignored) {}
+    }
+
+    String raw = config.getString(String.valueOf(closestLevel), "gray");
+
+    // 1) Пытаемся распознать по имени (red, green, light_purple и т.п.)
+    NamedTextColor named = NamedTextColor.NAMES.value(raw.toLowerCase(Locale.ROOT));
+    if (named != null) return named;
+
+    // 2) Пытаемся прочитать HEX (#RRGGBB)
+    TextColor hex = TextColor.fromHexString(raw);
+    if (hex != null) return hex;
+
+    // 3) Фолбэк
+    return NamedTextColor.GRAY;
+}
 }
