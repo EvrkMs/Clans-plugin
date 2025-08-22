@@ -13,6 +13,7 @@ import org.hibernate.cfg.AvailableSettings;
 import com.cruiser.clans.ClanPlugin;
 import com.cruiser.clans.orm.entity.ClanEntity;
 import com.cruiser.clans.orm.entity.ClanPlayerEntity;
+import com.cruiser.clans.orm.entity.ClanRegionEntity;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
@@ -99,6 +100,7 @@ public final class OrmManager {
             sessionFactory = new MetadataSources(registry)
                 .addAnnotatedClass(ClanEntity.class)
                 .addAnnotatedClass(ClanPlayerEntity.class)
+                .addAnnotatedClass(ClanRegionEntity.class)
                 .buildMetadata()
                 .buildSessionFactory();
             

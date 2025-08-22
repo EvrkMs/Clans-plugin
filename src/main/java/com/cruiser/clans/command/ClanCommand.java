@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 
 import com.cruiser.clans.ClanPlugin;
 import com.cruiser.clans.orm.entity.ClanEntity;
+import com.cruiser.clans.orm.entity.ClanRole;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -59,6 +60,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             case "chat", "c" -> handleChat(player, args);
             case "list" -> handleList(player);
             case "top" -> handleTop(player);
+            case "region" -> handleRegion(player, args);
             default -> {
                 player.sendMessage(Component.text("Неизвестная команда. Используйте /clan help", NamedTextColor.RED));
             }
@@ -102,6 +104,11 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             .append(Component.text(" - Список кланов", NamedTextColor.GRAY)));
         player.sendMessage(Component.text("/clan top", NamedTextColor.YELLOW)
             .append(Component.text(" - Топ кланов", NamedTextColor.GRAY)));
+
+        if (plugin.getConfig().getBoolean("regions.enabled", true)) {
+            player.sendMessage(Component.text("/clan region <подкоманда>", NamedTextColor.YELLOW)
+                .append(Component.text(" - Управление регионом", NamedTextColor.GRAY)));
+        }
     }
     
     private void handleCreate(Player player, String[] args) {
@@ -339,20 +346,157 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             });
         });
     }
+
+    private void handleRegion(Player player, String[] args) {
+        if (!plugin.getConfig().getBoolean("regions.enabled", true)) {
+            player.sendMessage(Component.text("Клановые регионы отключены", NamedTextColor.RED));
+            return;
+        }
+
+        if (args.length < 2) {
+            sendRegionHelp(player);
+            return;
+        }
+
+        String sub = args[1].toLowerCase();
+        switch (sub) {
+            case "help" -> sendRegionHelp(player);
+            case "marker" -> handleRegionMarker(player, args);
+            case "info" -> handleRegionInfo(player);
+            case "remove" -> handleRegionRemove(player);
+            default -> sendRegionHelp(player);
+        }
+    }
+
+    private void sendRegionHelp(Player player) {
+        player.sendMessage(Component.text()
+            .append(Component.text("===== ", NamedTextColor.GRAY))
+            .append(Component.text("Команды регионов", NamedTextColor.GOLD, TextDecoration.BOLD))
+            .append(Component.text(" =====", NamedTextColor.GRAY))
+            .build());
+
+        player.sendMessage(Component.text("/clan region marker <тип>", NamedTextColor.YELLOW)
+            .append(Component.text(" - Получить маркер", NamedTextColor.GRAY)));
+        player.sendMessage(Component.text("/clan region info", NamedTextColor.YELLOW)
+            .append(Component.text(" - Информация о регионе", NamedTextColor.GRAY)));
+        player.sendMessage(Component.text("/clan region remove", NamedTextColor.YELLOW)
+            .append(Component.text(" - Удалить регион", NamedTextColor.GRAY)));
+
+        player.sendMessage(Component.text("Доступные маркеры:", NamedTextColor.AQUA));
+        var markerSection = plugin.getConfig().getConfigurationSection("regions.marker-blocks");
+        if (markerSection != null) {
+            for (String markerType : markerSection.getKeys(false)) {
+                String displayName = markerSection.getString(markerType + ".display-name", markerType);
+                int minLevel = markerSection.getInt(markerType + ".min-clan-level", 1);
+                int maxRadius = markerSection.getInt(markerType + ".max-radius", 25);
+
+                player.sendMessage(Component.text("  " + markerType, NamedTextColor.WHITE)
+                    .append(Component.text(" - " + displayName, NamedTextColor.GRAY))
+                    .append(Component.text(" (Уровень " + minLevel + ", " + maxRadius + " блоков)", NamedTextColor.DARK_GRAY)));
+            }
+        }
+    }
+
+    private void handleRegionMarker(Player player, String[] args) {
+        if (args.length < 3) {
+            player.sendMessage(Component.text("Использование: /clan region marker <тип>", NamedTextColor.RED));
+            return;
+        }
+
+        String markerType = args[2].toUpperCase();
+        plugin.getRegionService().giveRegionMarker(player, markerType);
+    }
+
+    private void handleRegionInfo(Player player) {
+        plugin.getData().findPlayerByUuid(player.getUniqueId()).thenAccept(optPlayer -> {
+            if (optPlayer.isEmpty() || !optPlayer.get().isInClan()) {
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED))
+                );
+                return;
+            }
+
+            plugin.getData().findClanRegion(optPlayer.get().getClan().getId()).thenAccept(optRegion -> {
+                plugin.getData().runSync(() -> {
+                    if (optRegion.isEmpty()) {
+                        player.sendMessage(Component.text("У вашего клана нет региона", NamedTextColor.RED));
+                        return;
+                    }
+
+                    var region = optRegion.get();
+                    player.sendMessage(Component.text("===== Информация о регионе =====", NamedTextColor.GOLD, TextDecoration.BOLD));
+                    player.sendMessage(Component.text("Мир: ", NamedTextColor.GRAY)
+                        .append(Component.text(region.getWorldName(), NamedTextColor.WHITE)));
+                    player.sendMessage(Component.text("Тип маркера: ", NamedTextColor.GRAY)
+                        .append(Component.text(region.getMarkerType(), NamedTextColor.YELLOW)));
+                    player.sendMessage(Component.text("Размер: ", NamedTextColor.GRAY)
+                        .append(Component.text(region.getRegionSize() + " блоков²", NamedTextColor.GREEN)));
+                    player.sendMessage(Component.text("Центр: ", NamedTextColor.GRAY)
+                        .append(Component.text(region.getMarker1X() + ", " + region.getMarker1Y() + ", " + region.getMarker1Z(), NamedTextColor.WHITE)));
+                    if (region.hasSecondMarker()) {
+                        player.sendMessage(Component.text("Второй маркер: ", NamedTextColor.GRAY)
+                            .append(Component.text(region.getMarker2X() + ", " + region.getMarker2Y() + ", " + region.getMarker2Z(), NamedTextColor.WHITE)));
+                    }
+                });
+            });
+        });
+    }
+
+    private void handleRegionRemove(Player player) {
+        plugin.getData().findPlayerByUuid(player.getUniqueId()).thenAccept(optPlayer -> {
+            if (optPlayer.isEmpty() || !optPlayer.get().isInClan()) {
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED))
+                );
+                return;
+            }
+
+            if (optPlayer.get().getRole() != ClanRole.LEADER) {
+                plugin.getData().runSync(() ->
+                    player.sendMessage(Component.text("Только лидер может удалять регион", NamedTextColor.RED))
+                );
+                return;
+            }
+
+            plugin.getData().findClanRegion(optPlayer.get().getClan().getId()).thenAccept(optRegion -> {
+                if (optRegion.isEmpty()) {
+                    plugin.getData().runSync(() ->
+                        player.sendMessage(Component.text("У вашего клана нет региона", NamedTextColor.RED))
+                    );
+                    return;
+                }
+
+                var region = optRegion.get();
+                plugin.getData().deleteRegion(region.getId()).thenRun(() -> {
+                    plugin.getData().runSync(() ->
+                        player.sendMessage(Component.text("Регион клана удалён", NamedTextColor.GREEN))
+                    );
+                });
+            });
+        });
+    }
     
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList(
+            List<String> commands = new ArrayList<>(Arrays.asList(
                 "help", "create", "disband", "info", "invite",
                 "accept", "decline", "leave", "kick",
                 "promote", "demote", "transfer", "chat", "c",
                 "list", "top"
-            );
+            ));
+
+            if (plugin.getConfig().getBoolean("regions.enabled", true)) {
+                commands.add("region");
+            }
+
+            return commands;
         }
 
         if (args.length == 2) {
             switch (args[0].toLowerCase()) {
+                case "region":
+                    return Arrays.asList("help", "marker", "info", "remove");
                 case "invite", "kick", "promote", "demote", "transfer":
                     // Возвращаем список онлайн игроков
                     return plugin.getServer().getOnlinePlayers().stream()
@@ -369,6 +513,15 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                     } catch (Exception ignored) {
                         return new ArrayList<>();
                     }
+            }
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("region") && args[1].equalsIgnoreCase("marker")) {
+            var markerSection = plugin.getConfig().getConfigurationSection("regions.marker-blocks");
+            if (markerSection != null) {
+                return markerSection.getKeys(false).stream()
+                    .filter(key -> key.toLowerCase().startsWith(args[2].toLowerCase()))
+                    .toList();
             }
         }
 

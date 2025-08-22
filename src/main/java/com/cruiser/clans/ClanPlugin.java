@@ -10,11 +10,14 @@ import com.cruiser.clans.command.ClanAdminCommand;
 import com.cruiser.clans.command.ClanCommand;
 import com.cruiser.clans.listener.ChatListener;
 import com.cruiser.clans.listener.PlayerListener;
+import com.cruiser.clans.listener.RegionMarkerListener;
+import com.cruiser.clans.listener.RegionProtectionListener;
 import com.cruiser.clans.orm.DataManager;
 import com.cruiser.clans.orm.OrmManager;
 import com.cruiser.clans.service.ClanDisplayService;
 import com.cruiser.clans.service.ClanChatService;
 import com.cruiser.clans.service.ClanMemberService;
+import com.cruiser.clans.service.ClanRegionService;
 import com.cruiser.clans.service.ClanService;
 
 import net.kyori.adventure.text.Component;
@@ -29,6 +32,7 @@ public final class ClanPlugin extends JavaPlugin {
     private ClanService clanService;
     private ClanMemberService memberService;
     private ClanChatService chatService;
+    private ClanRegionService regionService;
     
     @Override
     public void onEnable() {
@@ -54,6 +58,7 @@ public final class ClanPlugin extends JavaPlugin {
             this.clanService = new ClanService(this, displayService);
             this.memberService = new ClanMemberService(this, displayService);
             this.chatService = new ClanChatService(this);
+            this.regionService = new ClanRegionService(this);
             
             // Проверка подключения к БД
             validateDatabase();
@@ -135,6 +140,11 @@ public final class ClanPlugin extends JavaPlugin {
         var pm = getServer().getPluginManager();
         pm.registerEvents(new PlayerListener(this), this);
         pm.registerEvents(new ChatListener(this), this);
+
+        if (getConfig().getBoolean("regions.enabled", true)) {
+            pm.registerEvents(new RegionProtectionListener(this), this);
+            pm.registerEvents(new RegionMarkerListener(this), this);
+        }
     }
     
     // Геттеры для доступа к сервисам
@@ -157,6 +167,10 @@ public final class ClanPlugin extends JavaPlugin {
 
     public ClanChatService getChatService() {
         return chatService;
+    }
+
+    public ClanRegionService getRegionService() {
+        return regionService;
     }
     
     public OrmManager getOrmManager() {
