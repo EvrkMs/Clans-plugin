@@ -482,16 +482,17 @@ public class ClanAdminCommand implements CommandExecutor, TabCompleter {
         
         if (args.length == 2) {
             switch (args[0].toLowerCase()) {
-                case "disband", "setlevel", "info", "setmax", "resetstats":
-                    // TODO: Возвращать список кланов
-                    break;
-                case "addmember", "removemember":
+                case "disband", "setlevel", "info", "setmax", "resetstats" -> {
+                }
+                case "addmember", "removemember" -> {
                     // Возвращаем список онлайн игроков
                     return plugin.getServer().getOnlinePlayers().stream()
-                        .map(Player::getName)
-                        .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
-                        .toList();
+                            .map(Player::getName)
+                            .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                            .toList();
+                }
             }
+            // TODO: Возвращать список кланов
         }
         
         return new ArrayList<>();

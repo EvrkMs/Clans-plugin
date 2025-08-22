@@ -15,8 +15,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 /**
- * Сервис для отображения тегов кланов в табе и над головами игроков
- * Использует Scoreboard API для управления префиксами
+ * Service for displaying clan tags in tab and above player heads
+ * Uses Scoreboard API for prefix management
  */
 public class ClanDisplayService {
     
@@ -29,153 +29,244 @@ public class ClanDisplayService {
     }
     
     /**
-     * Обновить отображение игрока (вызывается при входе, смене клана и т.д.)
+     * Update player display (called on join, clan change etc.)
      */
     public void updatePlayerDisplay(Player player) {
         UUID uuid = player.getUniqueId();
         
-        // Загружаем данные игрока из БД
+        // Load player data from database
         plugin.getData().findPlayerByUuid(uuid).thenAccept(optPlayer -> {
             plugin.getData().runSync(() -> {
-                if (optPlayer.isPresent() && optPlayer.get().isInClan()) {
-                    ClanPlayerEntity clanPlayer = optPlayer.get();
-                    ClanEntity clan = clanPlayer.getClan();
-                    
-                    // Добавляем в команду scoreboard для отображения тега
-                    addToTeam(player, clan);
-                    
-                    // Обновляем отображаемое имя
-                    updateDisplayName(player, clan);
-                } else {
-                    // Убираем из всех команд если не в клане
+                try {
+                    if (optPlayer.isPresent() && optPlayer.get().isInClan()) {
+                        ClanPlayerEntity clanPlayer = optPlayer.get();
+                        ClanEntity clan = clanPlayer.getClan();
+                        
+                        // Проверяем что clan не null (на всякий случай)
+                        if (clan != null) {
+                            // Add to scoreboard team for tag display
+                            addToTeam(player, clan);
+                            
+                            // Update display name
+                            updateDisplayName(player, clan);
+                        } else {
+                            // Remove from all teams if clan is null somehow
+                            removeFromAllTeams(player);
+                            resetDisplayName(player);
+                        }
+                    } else {
+                        // Remove from all teams if not in clan
+                        removeFromAllTeams(player);
+                        resetDisplayName(player);
+                    }
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Error in updatePlayerDisplay: " + e.getMessage());
+                    e.printStackTrace();
+                    // Fallback - remove from teams
                     removeFromAllTeams(player);
                     resetDisplayName(player);
                 }
             });
+        }).exceptionally(ex -> {
+            plugin.getLogger().warning("Error updating player display for " + player.getName() + ": " + ex.getMessage());
+            ex.printStackTrace();
+            // Fallback on main thread
+            plugin.getData().runSync(() -> {
+                removeFromAllTeams(player);
+                resetDisplayName(player);
+            });
+            return null;
         });
     }
     
     /**
-     * Добавить игрока в команду scoreboard для отображения тега клана
+     * Add player to scoreboard team for clan tag display
      */
     private void addToTeam(Player player, ClanEntity clan) {
-        String teamName = "clan_" + clan.getId();
-        Team team = scoreboard.getTeam(teamName);
-        
-        if (team == null) {
-            team = scoreboard.registerNewTeam(teamName);
+        try {
+            String teamName = "clan_" + clan.getId();
+            Team team = scoreboard.getTeam(teamName);
             
-            // Устанавливаем префикс с тегом клана
-            Component prefix = Component.text("[" + clan.getTag() + "] ", getTagColor(clan));
-            team.prefix(prefix);
+            if (team == null) {
+                team = scoreboard.registerNewTeam(teamName);
+                
+                // Set prefix with clan tag
+                Component prefix = Component.text("[" + clan.getTag() + "] ", getTagColor(clan));
+                team.prefix(prefix);
+                
+                // Team options
+                team.setAllowFriendlyFire(true); // Can configure PvP between clans
+                team.setCanSeeFriendlyInvisibles(false);
+            }
             
-            // Опции команды
-            team.setAllowFriendlyFire(true); // Можно настроить PvP между кланами
-            team.setCanSeeFriendlyInvisibles(false);
+            // Add player to team
+            team.addPlayer(player);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error adding player to team: " + e.getMessage());
+            e.printStackTrace();
         }
-        
-        // Добавляем игрока в команду
-        team.addPlayer(player);
     }
     
     /**
-     * Убрать игрока из всех команд кланов
+     * Remove player from all clan teams
      */
     private void removeFromAllTeams(Player player) {
-        scoreboard.getTeams().stream()
-            .filter(team -> team.getName().startsWith("clan_"))
-            .forEach(team -> team.removePlayer(player));
+        try {
+            scoreboard.getTeams().stream()
+                .filter(team -> team.getName().startsWith("clan_"))
+                .forEach(team -> {
+                    try {
+                        team.removePlayer(player);
+                    } catch (Exception e) {
+                        // Ignore errors when removing from teams
+                    }
+                });
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error removing player from teams: " + e.getMessage());
+        }
     }
     
     /**
-     * Обновить отображаемое имя игрока с тегом клана
+     * Update player's display name with clan tag
      */
     private void updateDisplayName(Player player, ClanEntity clan) {
-        Component displayName = Component.text()
-            .append(Component.text("[" + clan.getTag() + "] ", getTagColor(clan)))
-            .append(Component.text(player.getName(), NamedTextColor.WHITE))
-            .build();
-        
-        player.displayName(displayName);
-        player.playerListName(displayName);
+        try {
+            if (!plugin.getConfig().getBoolean("display.show-in-tablist", true)) {
+                return;
+            }
+            
+            Component displayName = Component.text()
+                .append(Component.text("[" + clan.getTag() + "] ", getTagColor(clan)))
+                .append(Component.text(player.getName(), NamedTextColor.WHITE))
+                .build();
+            
+            player.displayName(displayName);
+            player.playerListName(displayName);
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error updating display name: " + e.getMessage());
+        }
     }
     
     /**
-     * Сбросить отображаемое имя на стандартное
+     * Reset display name to default
      */
     private void resetDisplayName(Player player) {
-        player.displayName(Component.text(player.getName()));
-        player.playerListName(Component.text(player.getName()));
+        try {
+            player.displayName(Component.text(player.getName()));
+            player.playerListName(Component.text(player.getName()));
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error resetting display name: " + e.getMessage());
+        }
     }
     
     /**
-     * Получить цвет тега в зависимости от уровня клана
+     * Get tag color depending on clan level
      */
     private NamedTextColor getTagColor(ClanEntity clan) {
-        int level = clan.getClanLevel();
-        if (level >= 50) return NamedTextColor.DARK_RED;
-        if (level >= 40) return NamedTextColor.RED;
-        if (level >= 30) return NamedTextColor.GOLD;
-        if (level >= 20) return NamedTextColor.YELLOW;
-        if (level >= 10) return NamedTextColor.GREEN;
-        if (level >= 5) return NamedTextColor.AQUA;
-        return NamedTextColor.GRAY;
+        try {
+            int level = clan.getClanLevel();
+            if (level >= 50) return NamedTextColor.DARK_RED;
+            if (level >= 40) return NamedTextColor.RED;
+            if (level >= 30) return NamedTextColor.GOLD;
+            if (level >= 20) return NamedTextColor.YELLOW;
+            if (level >= 10) return NamedTextColor.GREEN;
+            if (level >= 5) return NamedTextColor.AQUA;
+            return NamedTextColor.GRAY;
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error getting tag color: " + e.getMessage());
+            return NamedTextColor.GRAY;
+        }
     }
     
     /**
-     * Обновить всех игроков клана
+     * Update all clan players
      */
     public void updateClanDisplay(Integer clanId) {
         plugin.getData().getClanMembers(clanId).thenAccept(members -> {
             plugin.getData().runSync(() -> {
                 for (ClanPlayerEntity member : members) {
-                    Player player = Bukkit.getPlayer(member.getUuidAsUUID());
-                    if (player != null && player.isOnline()) {
-                        updatePlayerDisplay(player);
+                    try {
+                        Player player = Bukkit.getPlayer(member.getUuidAsUUID());
+                        if (player != null && player.isOnline()) {
+                            updatePlayerDisplay(player);
+                        }
+                    } catch (Exception e) {
+                        plugin.getLogger().warning("Error updating clan member display: " + e.getMessage());
                     }
                 }
             });
+        }).exceptionally(ex -> {
+            plugin.getLogger().warning("Error updating clan display: " + ex.getMessage());
+            return null;
         });
     }
     
     /**
-     * Удалить команду клана из scoreboard
+     * Remove clan team from scoreboard
      */
     public void removeClanTeam(Integer clanId) {
-        String teamName = "clan_" + clanId;
-        Team team = scoreboard.getTeam(teamName);
-        if (team != null) {
-            team.unregister();
+        try {
+            String teamName = "clan_" + clanId;
+            Team team = scoreboard.getTeam(teamName);
+            if (team != null) {
+                team.unregister();
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error removing clan team: " + e.getMessage());
         }
     }
     
     /**
-     * Инициализация при старте плагина - загрузить все кланы
+     * Initialize on plugin start - load all clans
      */
     public void initialize() {
-        // Очищаем старые команды кланов
-        scoreboard.getTeams().stream()
-            .filter(team -> team.getName().startsWith("clan_"))
-            .forEach(Team::unregister);
-        
-        // Обновляем всех онлайн игроков
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            updatePlayerDisplay(player);
+        try {
+            // Clean old clan teams
+            scoreboard.getTeams().stream()
+                .filter(team -> team.getName().startsWith("clan_"))
+                .forEach(team -> {
+                    try {
+                        team.unregister();
+                    } catch (Exception e) {
+                        // Ignore errors
+                    }
+                });
+            
+            // Update all online players
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                updatePlayerDisplay(player);
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error initializing display service: " + e.getMessage());
         }
     }
     
     /**
-     * Очистка при выключении плагина
+     * Cleanup on plugin disable
      */
     public void shutdown() {
-        // Убираем все команды кланов
-        scoreboard.getTeams().stream()
-            .filter(team -> team.getName().startsWith("clan_"))
-            .forEach(Team::unregister);
-        
-        // Сбрасываем имена всех игроков
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            resetDisplayName(player);
+        try {
+            // Remove all clan teams
+            scoreboard.getTeams().stream()
+                .filter(team -> team.getName().startsWith("clan_"))
+                .forEach(team -> {
+                    try {
+                        team.unregister();
+                    } catch (Exception e) {
+                        // Ignore errors
+                    }
+                });
+            
+            // Reset all player names
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                try {
+                    resetDisplayName(player);
+                } catch (Exception e) {
+                    // Ignore errors
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Error shutting down display service: " + e.getMessage());
         }
     }
 }

@@ -26,8 +26,8 @@ public final class DataManager {
     }
     
     /**
-     * Выполнить операцию чтения БД (без транзакции)
-     * ВАЖНО: результат не кешируется, каждый вызов = новый запрос к БД
+     * Execute read operation (without transaction)
+     * IMPORTANT: result is not cached, each call = new database query
      */
     public <T> CompletableFuture<T> query(Function<Session, T> operation) {
         return CompletableFuture.supplyAsync(() -> {
@@ -35,14 +35,15 @@ public final class DataManager {
                 return operation.apply(session);
             } catch (Exception e) {
                 plugin.getLogger().severe("Query failed: " + e.getMessage());
+                e.printStackTrace();
                 throw new RuntimeException(e);
             }
         });
     }
     
     /**
-     * Выполнить операцию записи БД (с транзакцией)
-     * После выполнения все данные очищаются из памяти
+     * Execute write operation (with transaction)
+     * After execution all data is cleared from memory
      */
     public <T> CompletableFuture<T> transaction(Function<Session, T> operation) {
         return CompletableFuture.supplyAsync(() -> {
@@ -58,15 +59,16 @@ public final class DataManager {
                     tx.rollback();
                 }
                 plugin.getLogger().severe("Transaction failed: " + e.getMessage());
+                e.printStackTrace();
                 throw new RuntimeException(e);
             } finally {
-                session.close(); // Важно: закрываем сессию, освобождаем память
+                session.close(); // Important: close session, free memory
             }
         });
     }
     
     /**
-     * Выполнить операцию записи без возврата результата
+     * Execute write operation without return value
      */
     public CompletableFuture<Void> execute(Consumer<Session> operation) {
         return transaction(session -> {
@@ -75,10 +77,10 @@ public final class DataManager {
         });
     }
     
-    // === Специфичные методы для работы с кланами ===
+    // === Specific methods for working with clans ===
     
     /**
-     * Найти клан по ID (каждый вызов = запрос к БД)
+     * Find clan by ID (each call = database query)
      */
     public CompletableFuture<Optional<ClanEntity>> findClanById(Integer id) {
         return query(session -> 
@@ -87,7 +89,7 @@ public final class DataManager {
     }
     
     /**
-     * Найти клан по имени (с учетом регистра)
+     * Find clan by name (case sensitive)
      */
     public CompletableFuture<Optional<ClanEntity>> findClanByName(String name) {
         return query(session -> {
@@ -101,7 +103,7 @@ public final class DataManager {
     }
     
     /**
-     * Найти клан по тегу
+     * Find clan by tag
      */
     public CompletableFuture<Optional<ClanEntity>> findClanByTag(String tag) {
         return query(session -> {
@@ -115,21 +117,28 @@ public final class DataManager {
     }
     
     /**
-     * Найти игрока по UUID
+     * Find player by UUID WITH CLAN DATA (to avoid LazyInitializationException)
      */
     public CompletableFuture<Optional<ClanPlayerEntity>> findPlayerByUuid(UUID uuid) {
-        return query(session -> 
-            Optional.ofNullable(session.get(ClanPlayerEntity.class, uuid.toString()))
-        );
+        return query(session -> {
+            List<ClanPlayerEntity> players = session.createQuery(
+                "FROM ClanPlayerEntity p LEFT JOIN FETCH p.clan WHERE p.uuid = :uuid", 
+                ClanPlayerEntity.class)
+                .setParameter("uuid", uuid.toString())
+                .setMaxResults(1)
+                .list();
+            return players.isEmpty() ? Optional.empty() : Optional.of(players.get(0));
+        });
     }
     
     /**
-     * Найти игрока по имени (с учетом регистра)
+     * Find player by name (case sensitive) WITH CLAN DATA
      */
     public CompletableFuture<Optional<ClanPlayerEntity>> findPlayerByName(String name) {
         return query(session -> {
             List<ClanPlayerEntity> players = session.createQuery(
-                "FROM ClanPlayerEntity p WHERE p.name = :name", ClanPlayerEntity.class)
+                "FROM ClanPlayerEntity p LEFT JOIN FETCH p.clan WHERE p.name = :name", 
+                ClanPlayerEntity.class)
                 .setParameter("name", name)
                 .setMaxResults(1)
                 .list();
@@ -138,19 +147,20 @@ public final class DataManager {
     }
     
     /**
-     * Получить список всех членов клана
+     * Get list of all clan members WITH CLAN DATA
      */
     public CompletableFuture<List<ClanPlayerEntity>> getClanMembers(Integer clanId) {
         return query(session -> 
             session.createQuery(
-                "FROM ClanPlayerEntity p WHERE p.clan.id = :clanId", ClanPlayerEntity.class)
+                "FROM ClanPlayerEntity p JOIN FETCH p.clan WHERE p.clan.id = :clanId", 
+                ClanPlayerEntity.class)
                 .setParameter("clanId", clanId)
                 .list()
         );
     }
     
     /**
-     * Получить топ кланов по убийствам
+     * Get top clans by kills
      */
     public CompletableFuture<List<ClanEntity>> getTopClansByKills(int limit) {
         return query(session -> 
@@ -162,18 +172,18 @@ public final class DataManager {
     }
     
     /**
-     * Создать новый клан
+     * Create new clan
      */
     public CompletableFuture<ClanEntity> createClan(ClanEntity clan) {
         return transaction(session -> {
             session.persist(clan);
-            session.flush(); // Форсируем запись чтобы получить ID
+            session.flush(); // Force write to get ID
             return clan;
         });
     }
     
     /**
-     * Обновить клан
+     * Update clan
      */
     public CompletableFuture<ClanEntity> updateClan(ClanEntity clan) {
         return transaction(session -> 
@@ -182,18 +192,18 @@ public final class DataManager {
     }
     
     /**
-     * Удалить клан и всех его участников
+     * Delete clan and all its members
      */
     public CompletableFuture<Void> deleteClan(Integer clanId) {
         return execute(session -> {
-            // Сначала убираем всех игроков из клана
+            // First remove all players from clan
             session.createQuery(
-                "UPDATE ClanPlayerEntity p SET p.clan = null, p.role = 'MEMBER', p.joinedAt = null " +
+                "UPDATE ClanPlayerEntity p SET p.clan = null, p.role = 'MEMBER', p.joinedAt = null, p.clanContribution = 0 " +
                 "WHERE p.clan.id = :clanId")
                 .setParameter("clanId", clanId)
                 .executeUpdate();
             
-            // Затем удаляем сам клан
+            // Then delete clan itself
             ClanEntity clan = session.get(ClanEntity.class, clanId);
             if (clan != null) {
                 session.remove(clan);
@@ -202,7 +212,7 @@ public final class DataManager {
     }
     
     /**
-     * Сохранить или обновить игрока
+     * Save or update player
      */
     public CompletableFuture<ClanPlayerEntity> savePlayer(ClanPlayerEntity player) {
         return transaction(session -> 
@@ -211,7 +221,7 @@ public final class DataManager {
     }
     
     /**
-     * Выполнить операцию в главном потоке Bukkit
+     * Execute operation in main Bukkit thread
      */
     public void runSync(Runnable task) {
         if (Bukkit.isPrimaryThread()) {
@@ -222,7 +232,7 @@ public final class DataManager {
     }
     
     /**
-     * Получить количество кланов
+     * Get clan count
      */
     public CompletableFuture<Long> getClansCount() {
         return query(session -> 
@@ -232,7 +242,7 @@ public final class DataManager {
     }
     
     /**
-     * Получить количество игроков в кланах
+     * Get players in clans count
      */
     public CompletableFuture<Long> getPlayersInClansCount() {
         return query(session -> 
