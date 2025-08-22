@@ -69,7 +69,7 @@ public class RegionProtectionListener implements Listener {
                 }
 
                 if (plugin.getConfig().getBoolean("regions.protection.block-break", true)) {
-                    checkRegionPermission(player, region, event::setCancelled);
+                    checkRegionPermission(player, region, () -> event.setCancelled(true));
                 }
             }
         }).exceptionally(ex -> {
@@ -100,7 +100,7 @@ public class RegionProtectionListener implements Listener {
         if (plugin.getConfig().getBoolean("regions.protection.block-place", true)) {
             regionService.getRegionAtLocation(location).thenAccept(optRegion -> {
                 if (optRegion.isPresent()) {
-                    checkRegionPermission(player, optRegion.get(), event::setCancelled);
+                    checkRegionPermission(player, optRegion.get(), () -> event.setCancelled(true));
                 }
             }).exceptionally(ex -> {
                 plugin.getLogger().warning("Ошибка проверки защиты региона: " + ex.getMessage());
@@ -119,20 +119,30 @@ public class RegionProtectionListener implements Listener {
         if (event.getClickedBlock() == null) return;
 
         switch (event.getClickedBlock().getType()) {
-            case CHEST, TRAPPED_CHEST, BARREL, SHULKER_BOX, FURNACE, BLAST_FURNACE,
-                 SMOKER, DROPPER, DISPENSER, HOPPER -> {
+            case CHEST:
+            case TRAPPED_CHEST:
+            case BARREL:
+            case SHULKER_BOX:
+            case FURNACE:
+            case BLAST_FURNACE:
+            case SMOKER:
+            case DROPPER:
+            case DISPENSER:
+            case HOPPER:
                 Player player = event.getPlayer();
                 Location location = event.getClickedBlock().getLocation();
 
                 regionService.getRegionAtLocation(location).thenAccept(optRegion -> {
                     if (optRegion.isPresent()) {
-                        checkRegionPermission(player, optRegion.get(), event::setCancelled);
+                        checkRegionPermission(player, optRegion.get(), () -> event.setCancelled(true));
                     }
                 }).exceptionally(ex -> {
                     plugin.getLogger().warning("Ошибка проверки защиты региона: " + ex.getMessage());
                     return null;
                 });
-            }
+                break;
+            default:
+                break;
         }
     }
 
@@ -151,7 +161,7 @@ public class RegionProtectionListener implements Listener {
 
         regionService.getRegionAtLocation(location).thenAccept(optRegion -> {
             if (optRegion.isPresent()) {
-                checkRegionPermission(player, optRegion.get(), event::setCancelled);
+                checkRegionPermission(player, optRegion.get(), () -> event.setCancelled(true));
             }
         }).exceptionally(ex -> {
             plugin.getLogger().warning("Ошибка проверки защиты региона: " + ex.getMessage());
