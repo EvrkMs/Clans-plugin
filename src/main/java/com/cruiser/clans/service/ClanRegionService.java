@@ -1,5 +1,6 @@
 package com.cruiser.clans.service;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -127,6 +128,41 @@ public class ClanRegionService {
             player.sendMessage(Component.text("Неизвестный тип маркера", NamedTextColor.RED));
             return;
         }
+
+        var optPlayer = plugin.getData().findPlayerByUuid(player.getUniqueId()).join();
+        if (optPlayer.isEmpty() || !optPlayer.get().isInClan()) {
+            player.sendMessage(Component.text("Вы не состоите в клане", NamedTextColor.RED));
+            return;
+        }
+        if (optPlayer.get().getRole() != ClanRole.LEADER) {
+            player.sendMessage(Component.text("Маркер может получить только лидер клана", NamedTextColor.RED));
+            return;
+        }
+
+        var clan = optPlayer.get().getClan();
+        Optional<ClanRegionEntity> optRegion = plugin.getData().findClanRegion(clan.getId()).join();
+
+        int markersInInv = Arrays.stream(player.getInventory().getContents())
+            .filter(this::isClanMarker)
+            .mapToInt(ItemStack::getAmount)
+            .sum();
+
+        if (optRegion.isPresent()) {
+            if (optRegion.get().hasSecondMarker()) {
+                player.sendMessage(Component.text("У вашего клана уже установлен регион", NamedTextColor.RED));
+                return;
+            }
+            if (markersInInv >= 1) {
+                player.sendMessage(Component.text("У вас уже есть маркер", NamedTextColor.RED));
+                return;
+            }
+        } else {
+            if (markersInInv >= 2) {
+                player.sendMessage(Component.text("У вас уже есть два маркера", NamedTextColor.RED));
+                return;
+            }
+        }
+
         Material mat;
         try {
             mat = Material.valueOf(markerType);

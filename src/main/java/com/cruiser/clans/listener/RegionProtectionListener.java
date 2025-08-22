@@ -1,5 +1,7 @@
 package com.cruiser.clans.listener;
 
+import java.util.Optional;
+
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -40,7 +42,8 @@ public class RegionProtectionListener implements Listener {
         Player player = event.getPlayer();
         Location location = event.getBlock().getLocation();
 
-        regionService.getRegionAtLocation(location).thenAccept(optRegion -> {
+        try {
+            Optional<ClanRegionEntity> optRegion = regionService.getRegionAtLocation(location).join();
             if (optRegion.isPresent()) {
                 ClanRegionEntity region = optRegion.get();
 
@@ -54,28 +57,26 @@ public class RegionProtectionListener implements Listener {
                                    location.getBlockZ() == region.getMarker2Z();
 
                 if (isMarker1 || isMarker2) {
-                    regionService.handleMarkerBreak(player, location).thenAccept(allowed -> {
-                        if (!allowed) {
-                            plugin.getData().runSync(() -> {
-                                event.setCancelled(true);
-                                String message = plugin.getConfig().getString("regions.protection.messages.no-permission",
-                                    "&cВы не можете делать это на территории %clan%")
-                                    .replace("%clan%", region.getClan().getName());
-                                player.sendMessage(Component.text(message, NamedTextColor.RED));
-                            });
-                        }
-                    });
+                    boolean allowed = regionService.handleMarkerBreak(player, location).join();
+                    if (!allowed) {
+                        event.setCancelled(true);
+                        String message = plugin.getConfig().getString("regions.protection.messages.no-permission",
+                            "&cВы не можете делать это на территории %clan%")
+                            .replace("%clan%", region.getClan().getName());
+                        player.sendMessage(Component.text(message, NamedTextColor.RED));
+                    }
                     return;
                 }
 
                 if (plugin.getConfig().getBoolean("regions.protection.block-break", true)) {
-                    checkRegionPermission(player, region, () -> event.setCancelled(true));
+                    if (!checkRegionPermission(player, region)) {
+                        event.setCancelled(true);
+                    }
                 }
             }
-        }).exceptionally(ex -> {
+        } catch (Exception ex) {
             plugin.getLogger().warning("Ошибка проверки защиты региона: " + ex.getMessage());
-            return null;
-        });
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -89,23 +90,24 @@ public class RegionProtectionListener implements Listener {
         ItemStack item = event.getItemInHand();
 
         if (regionService.isClanMarker(item)) {
-            regionService.handleMarkerPlacement(player, location, item).thenAccept(success -> {
-                if (!success) {
-                    plugin.getData().runSync(() -> event.setCancelled(true));
-                }
-            });
+            boolean success = regionService.handleMarkerPlacement(player, location, item).join();
+            if (!success) {
+                event.setCancelled(true);
+            }
             return;
         }
 
         if (plugin.getConfig().getBoolean("regions.protection.block-place", true)) {
-            regionService.getRegionAtLocation(location).thenAccept(optRegion -> {
+            try {
+                Optional<ClanRegionEntity> optRegion = regionService.getRegionAtLocation(location).join();
                 if (optRegion.isPresent()) {
-                    checkRegionPermission(player, optRegion.get(), () -> event.setCancelled(true));
+                    if (!checkRegionPermission(player, optRegion.get())) {
+                        event.setCancelled(true);
+                    }
                 }
-            }).exceptionally(ex -> {
+            } catch (Exception ex) {
                 plugin.getLogger().warning("Ошибка проверки защиты региона: " + ex.getMessage());
-                return null;
-            });
+            }
         }
     }
 
@@ -119,30 +121,31 @@ public class RegionProtectionListener implements Listener {
         if (event.getClickedBlock() == null) return;
 
         switch (event.getClickedBlock().getType()) {
-            case CHEST:
-            case TRAPPED_CHEST:
-            case BARREL:
-            case SHULKER_BOX:
-            case FURNACE:
-            case BLAST_FURNACE:
-            case SMOKER:
-            case DROPPER:
-            case DISPENSER:
-            case HOPPER:
+            case CHEST,
+                 TRAPPED_CHEST,
+                 BARREL,
+                 SHULKER_BOX,
+                 FURNACE,
+                 BLAST_FURNACE,
+                 SMOKER,
+                 DROPPER,
+                 DISPENSER,
+                 HOPPER -> {
                 Player player = event.getPlayer();
                 Location location = event.getClickedBlock().getLocation();
-
-                regionService.getRegionAtLocation(location).thenAccept(optRegion -> {
+                try {
+                    Optional<ClanRegionEntity> optRegion = regionService.getRegionAtLocation(location).join();
                     if (optRegion.isPresent()) {
-                        checkRegionPermission(player, optRegion.get(), () -> event.setCancelled(true));
+                        if (!checkRegionPermission(player, optRegion.get())) {
+                            event.setCancelled(true);
+                        }
                     }
-                }).exceptionally(ex -> {
+                } catch (Exception ex) {
                     plugin.getLogger().warning("Ошибка проверки защиты региона: " + ex.getMessage());
-                    return null;
-                });
-                break;
-            default:
-                break;
+                }
+            }
+            default -> {
+            }
         }
     }
 
@@ -159,35 +162,34 @@ public class RegionProtectionListener implements Listener {
 
         Location location = event.getEntity().getLocation();
 
-        regionService.getRegionAtLocation(location).thenAccept(optRegion -> {
+        try {
+            Optional<ClanRegionEntity> optRegion = regionService.getRegionAtLocation(location).join();
             if (optRegion.isPresent()) {
-                checkRegionPermission(player, optRegion.get(), () -> event.setCancelled(true));
+                if (!checkRegionPermission(player, optRegion.get())) {
+                    event.setCancelled(true);
+                }
             }
-        }).exceptionally(ex -> {
+        } catch (Exception ex) {
             plugin.getLogger().warning("Ошибка проверки защиты региона: " + ex.getMessage());
-            return null;
-        });
+        }
     }
 
-    private void checkRegionPermission(Player player, ClanRegionEntity region, Runnable denyAction) {
-        plugin.getData().findPlayerByUuid(player.getUniqueId()).thenAccept(optPlayer -> {
-            boolean hasPermission = false;
-            if (optPlayer.isPresent() && optPlayer.get().isInClan()) {
-                hasPermission = optPlayer.get().getClan().getId().equals(region.getClan().getId());
-            }
-
+    private boolean checkRegionPermission(Player player, ClanRegionEntity region) {
+        try {
+            Optional<com.cruiser.clans.orm.entity.ClanPlayerEntity> optPlayer =
+                plugin.getData().findPlayerByUuid(player.getUniqueId()).join();
+            boolean hasPermission = optPlayer.isPresent() && optPlayer.get().isInClan() &&
+                optPlayer.get().getClan().getId().equals(region.getClan().getId());
             if (!hasPermission) {
-                plugin.getData().runSync(() -> {
-                    denyAction.run();
-                    String message = plugin.getConfig().getString("regions.protection.messages.no-permission",
-                        "&cВы не можете делать это на территории %clan%")
-                        .replace("%clan%", region.getClan().getName());
-                    player.sendMessage(Component.text(message, NamedTextColor.RED));
-                });
+                String message = plugin.getConfig().getString("regions.protection.messages.no-permission",
+                    "&cВы не можете делать это на территории %clan%")
+                    .replace("%clan%", region.getClan().getName());
+                player.sendMessage(Component.text(message, NamedTextColor.RED));
             }
-        }).exceptionally(ex -> {
+            return hasPermission;
+        } catch (Exception ex) {
             plugin.getLogger().warning("Ошибка проверки прав игрока: " + ex.getMessage());
-            return null;
-        });
+            return true;
+        }
     }
 }
