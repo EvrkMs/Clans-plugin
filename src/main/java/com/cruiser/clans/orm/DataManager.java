@@ -14,6 +14,7 @@ import org.hibernate.Transaction;
 import com.cruiser.clans.ClanPlugin;
 import com.cruiser.clans.orm.entity.ClanEntity;
 import com.cruiser.clans.orm.entity.ClanPlayerEntity;
+import com.cruiser.clans.orm.entity.ClanRegionEntity;
 
 public final class DataManager {
     
@@ -203,6 +204,11 @@ public final class DataManager {
                 .setParameter("clanId", clanId)
                 .executeUpdate();
             
+            // Delete clan regions
+            session.createQuery("DELETE FROM ClanRegionEntity r WHERE r.clan.id = :clanId")
+                .setParameter("clanId", clanId)
+                .executeUpdate();
+
             // Then delete clan itself
             ClanEntity clan = session.get(ClanEntity.class, clanId);
             if (clan != null) {
@@ -215,8 +221,85 @@ public final class DataManager {
      * Save or update player
      */
     public CompletableFuture<ClanPlayerEntity> savePlayer(ClanPlayerEntity player) {
-        return transaction(session -> 
+        return transaction(session ->
             session.merge(player)
+        );
+    }
+
+    // === Region-specific methods ===
+
+    /**
+     * Create new region
+     */
+    public CompletableFuture<ClanRegionEntity> createRegion(ClanRegionEntity region) {
+        return transaction(session -> {
+            session.persist(region);
+            session.flush();
+            return region;
+        });
+    }
+
+    /**
+     * Update region
+     */
+    public CompletableFuture<ClanRegionEntity> updateRegion(ClanRegionEntity region) {
+        return transaction(session ->
+            session.merge(region)
+        );
+    }
+
+    /**
+     * Delete region
+     */
+    public CompletableFuture<Void> deleteRegion(Integer regionId) {
+        return execute(session -> {
+            ClanRegionEntity region = session.get(ClanRegionEntity.class, regionId);
+            if (region != null) {
+                session.remove(region);
+            }
+        });
+    }
+
+    /**
+     * Find region by ID
+     */
+    public CompletableFuture<Optional<ClanRegionEntity>> findRegionById(Integer id) {
+        return query(session -> {
+            List<ClanRegionEntity> regions = session.createQuery(
+                "FROM ClanRegionEntity r JOIN FETCH r.clan WHERE r.id = :id",
+                ClanRegionEntity.class)
+                .setParameter("id", id)
+                .setMaxResults(1)
+                .list();
+            return regions.isEmpty() ? Optional.empty() : Optional.of(regions.get(0));
+        });
+    }
+
+    /**
+     * Find clan region
+     */
+    public CompletableFuture<Optional<ClanRegionEntity>> findClanRegion(Integer clanId) {
+        return query(session -> {
+            List<ClanRegionEntity> regions = session.createQuery(
+                "FROM ClanRegionEntity r JOIN FETCH r.clan WHERE r.clan.id = :clanId",
+                ClanRegionEntity.class)
+                .setParameter("clanId", clanId)
+                .setMaxResults(1)
+                .list();
+            return regions.isEmpty() ? Optional.empty() : Optional.of(regions.get(0));
+        });
+    }
+
+    /**
+     * Find regions by world
+     */
+    public CompletableFuture<List<ClanRegionEntity>> findRegionsByWorld(String worldName) {
+        return query(session ->
+            session.createQuery(
+                "FROM ClanRegionEntity r JOIN FETCH r.clan WHERE r.worldName = :world",
+                ClanRegionEntity.class)
+                .setParameter("world", worldName)
+                .list()
         );
     }
     
@@ -245,8 +328,18 @@ public final class DataManager {
      * Get players in clans count
      */
     public CompletableFuture<Long> getPlayersInClansCount() {
-        return query(session -> 
+        return query(session ->
             session.createQuery("SELECT COUNT(p) FROM ClanPlayerEntity p WHERE p.clan IS NOT NULL", Long.class)
+                .uniqueResult()
+        );
+    }
+
+    /**
+     * Get regions count
+     */
+    public CompletableFuture<Long> getRegionsCount() {
+        return query(session ->
+            session.createQuery("SELECT COUNT(r) FROM ClanRegionEntity r", Long.class)
                 .uniqueResult()
         );
     }

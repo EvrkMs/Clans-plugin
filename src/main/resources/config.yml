@@ -78,6 +78,26 @@ chat:
   # Формат сообщения
   format: "%prefix% &7%player%: &f%message%"
 
+# Настройки регионов кланов
+regions:
+  enabled: true
+  protection:
+    block-break: true
+    block-place: true
+    container-access: true
+    entity-damage: true
+    messages:
+      no-permission: "&cВы не можете делать это на территории %clan%"
+  marker-blocks:
+    COPPER_ORE:
+      display-name: "Медный маркер"
+      min-clan-level: 1
+      max-radius: 25
+    EMERALD_ORE:
+      display-name: "Изумрудный маркер"
+      min-clan-level: 5
+      max-radius: 75
+
 # Настройки статистики
 statistics:
   # Сохранять детальную статистику
