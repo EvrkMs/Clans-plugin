@@ -41,15 +41,9 @@ public final class Database {
         this.jdbcUrl = "jdbc:sqlite:" + dbFile.getAbsolutePath();
 
         try (Connection conn = newConnection()) {
+            // Create/upgrade schema within an explicit transaction.
             conn.setAutoCommit(false);
             try (Statement st = conn.createStatement()) {
-                // Pragmas to improve safety and performance
-                st.execute("PRAGMA foreign_keys = ON;");
-                st.execute("PRAGMA journal_mode = WAL;");
-                st.execute("PRAGMA synchronous = NORMAL;");
-                st.execute("PRAGMA wal_autocheckpoint = 1000;");
-                st.execute("PRAGMA temp_store = MEMORY;");
-
                 // Schema
                 st.execute("""
                     CREATE TABLE IF NOT EXISTS clans (
@@ -129,7 +123,16 @@ public final class Database {
     }
 
     public Connection newConnection() throws SQLException {
-        return DriverManager.getConnection(jdbcUrl);
+        Connection c = DriverManager.getConnection(jdbcUrl);
+        // Apply per-connection PRAGMAs outside of a transaction
+        try (Statement st = c.createStatement()) {
+            st.execute("PRAGMA foreign_keys = ON;");
+            st.execute("PRAGMA journal_mode = WAL;");
+            st.execute("PRAGMA synchronous = NORMAL;");
+            st.execute("PRAGMA wal_autocheckpoint = 1000;");
+            st.execute("PRAGMA temp_store = MEMORY;");
+        }
+        return c;
     }
 
     public <T> CompletableFuture<T> withConnection(Function<Connection, T> op) {
