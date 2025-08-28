@@ -18,11 +18,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
  */
 public class RegionMarkerListener implements Listener {
 
-    private final ClanPlugin plugin;
     private final ClanRegionService regionService;
 
     public RegionMarkerListener(ClanPlugin plugin) {
-        this.plugin = plugin;
         this.regionService = plugin.getRegionService();
     }
 

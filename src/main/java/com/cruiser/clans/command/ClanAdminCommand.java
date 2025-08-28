@@ -305,7 +305,7 @@ public class ClanAdminCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage(Component.text("Игроков в кланах: ", NamedTextColor.GRAY)
                         .append(Component.text(playersCount, NamedTextColor.WHITE)));
                     sender.sendMessage(Component.text("Состояние пула: ", NamedTextColor.GRAY)
-                        .append(Component.text(plugin.getOrmManager().getPoolStats(), NamedTextColor.AQUA)));
+                        .append(Component.text("DB: SQLite (lightweight)", NamedTextColor.AQUA)));
                     sender.sendMessage(Component.text("Режим чата клана: ", NamedTextColor.GRAY)
                         .append(Component.text(plugin.getChatService().getClanChatModeCount() + " игроков", NamedTextColor.YELLOW)));
                 });
@@ -360,10 +360,7 @@ public class ClanAdminCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleList(CommandSender sender) {
-        plugin.getData().query(session -> 
-            session.createQuery("FROM ClanEntity c ORDER BY c.clanLevel DESC, c.totalKills DESC", ClanEntity.class)
-                .list()
-        ).thenAccept(clans -> {
+        plugin.getData().getAllClansOrderedByLevelAndKills().thenAccept(clans -> {
             plugin.getData().runSync(() -> {
                 sender.sendMessage(Component.text("===== Список всех кланов =====", NamedTextColor.GOLD, TextDecoration.BOLD));
                 
@@ -483,6 +480,12 @@ public class ClanAdminCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             switch (args[0].toLowerCase()) {
                 case "disband", "setlevel", "info", "setmax", "resetstats" -> {
+                    try {
+                        String prefix = args[1].toLowerCase();
+                        return plugin.getData().getAllClanNames().join().stream()
+                                .filter(name -> name.toLowerCase().startsWith(prefix))
+                                .toList();
+                    } catch (Exception ignored) {}
                 }
                 case "addmember", "removemember" -> {
                     // Возвращаем список онлайн игроков

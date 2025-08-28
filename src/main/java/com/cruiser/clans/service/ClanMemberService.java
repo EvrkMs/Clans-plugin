@@ -313,18 +313,7 @@ public class ClanMemberService {
                 }
                 
                 // Выполняем передачу лидерства в транзакции
-                return plugin.getData().transaction(session -> {
-                    // Обновляем роли
-                    ClanPlayerEntity managedOldLeader = session.merge(leaderPlayer);
-                    ClanPlayerEntity managedNewLeader = session.merge(newLeaderPlayer);
-                    ClanEntity managedClan = session.merge(clan);
-                    
-                    managedOldLeader.setRole(ClanRole.OFFICER);
-                    managedNewLeader.setRole(ClanRole.LEADER);
-                    managedClan.setLeaderUuid(newLeaderPlayer.getUuid());
-                    
-                    return true;
-                }).thenCompose(success -> {
+                return plugin.getData().transferLeadership(leaderPlayer, newLeaderPlayer, clan).thenCompose(success -> {
                     // Уведомляем нового лидера
                     Player newLeaderBukkitPlayer = plugin.getServer().getPlayer(newLeaderPlayer.getUuidAsUUID());
                     if (newLeaderBukkitPlayer != null && newLeaderBukkitPlayer.isOnline()) {

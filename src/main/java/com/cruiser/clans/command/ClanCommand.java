@@ -253,11 +253,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     }
     
     private void handleList(Player player) {
-        plugin.getData().query(session -> 
-            session.createQuery("FROM ClanEntity c ORDER BY c.clanLevel DESC, c.totalKills DESC", ClanEntity.class)
-                .setMaxResults(20)
-                .list()
-        ).thenAccept(clans -> {
+        plugin.getData().getClansOrderedByLevelAndKills(20).thenAccept(clans -> {
             plugin.getData().runSync(() -> {
                 player.sendMessage(Component.text("===== Список кланов =====", NamedTextColor.GOLD, TextDecoration.BOLD));
                 
@@ -505,9 +501,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                         .toList();
                 case "info":
                     try {
-                        return plugin.getData().query(session ->
-                            session.createQuery("SELECT c.name FROM ClanEntity c", String.class).list()
-                        ).join().stream()
+                        return plugin.getData().getAllClanNames().join().stream()
                             .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
                             .toList();
                     } catch (Exception ignored) {

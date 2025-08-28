@@ -1,46 +1,18 @@
 package com.cruiser.clans.orm.entity;
 
-import jakarta.persistence.*;
-
 import org.bukkit.Location;
 
-/**
- * Сущность региона клана
- */
-@Entity
-@Table(name = "clan_regions")
 public class ClanRegionEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "clan_id", nullable = false, foreignKey = @ForeignKey(name = "fk_region_clan"), unique = true)
-    private ClanEntity clan; // Каждому клану только один регион
-
-    @Column(name = "world_name", nullable = false, length = 64)
+    private ClanEntity clan;
     private String worldName;
-
-    @Column(name = "marker_type", nullable = false, length = 32)
-    private String markerType; // Тип блока-маркера
-
-    @Column(name = "marker1_x", nullable = false)
+    private String markerType;
     private int marker1X;
-
-    @Column(name = "marker1_y", nullable = false)
     private int marker1Y;
-
-    @Column(name = "marker1_z", nullable = false)
     private int marker1Z;
-
-    @Column(name = "marker2_x")
     private Integer marker2X;
-
-    @Column(name = "marker2_y")
     private Integer marker2Y;
-
-    @Column(name = "marker2_z")
     private Integer marker2Z;
 
     public Integer getId() { return id; }
@@ -73,12 +45,9 @@ public class ClanRegionEntity {
     public Integer getMarker2Z() { return marker2Z; }
     public void setMarker2Z(Integer marker2z) { this.marker2Z = marker2z; }
 
-    /**
-     * Есть ли второй маркер
-     */
     public boolean hasSecondMarker() {
         return marker2X != null && marker2Y != null && marker2Z != null;
-        }
+    }
 
     public void setMarker1(Location loc) {
         this.marker1X = loc.getBlockX();
@@ -92,9 +61,6 @@ public class ClanRegionEntity {
         this.marker2Z = loc.getBlockZ();
     }
 
-    /**
-     * Проверка, находится ли точка внутри региона
-     */
     public boolean contains(Location loc) {
         if (!loc.getWorld().getName().equals(worldName)) return false;
         if (!hasSecondMarker()) {
@@ -111,9 +77,6 @@ public class ClanRegionEntity {
                loc.getBlockZ() >= minZ && loc.getBlockZ() <= maxZ;
     }
 
-    /**
-     * Площадь региона (по горизонтали)
-     */
     public int getRegionSize() {
         if (!hasSecondMarker()) return 0;
         int dx = Math.abs(marker1X - marker2X) + 1;
@@ -121,3 +84,4 @@ public class ClanRegionEntity {
         return dx * dz;
     }
 }
+

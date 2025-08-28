@@ -60,16 +60,14 @@ public class ClanDisplayService {
                         resetDisplayName(player);
                     }
                 } catch (Exception e) {
-                    plugin.getLogger().warning("Error in updatePlayerDisplay: " + e.getMessage());
-                    e.printStackTrace();
+                    plugin.getLogger().log(java.util.logging.Level.WARNING, "Error in updatePlayerDisplay", e);
                     // Fallback - remove from teams
                     removeFromAllTeams(player);
                     resetDisplayName(player);
                 }
             });
         }).exceptionally(ex -> {
-            plugin.getLogger().warning("Error updating player display for " + player.getName() + ": " + ex.getMessage());
-            ex.printStackTrace();
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error updating player display for " + player.getName(), ex);
             // Fallback on main thread
             plugin.getData().runSync(() -> {
                 removeFromAllTeams(player);
@@ -102,8 +100,7 @@ public class ClanDisplayService {
             // Add player to team
             team.addPlayer(player);
         } catch (Exception e) {
-            plugin.getLogger().warning("Error adding player to team: " + e.getMessage());
-            e.printStackTrace();
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error adding player to team", e);
         }
     }
     
@@ -122,7 +119,7 @@ public class ClanDisplayService {
                     }
                 });
         } catch (Exception e) {
-            plugin.getLogger().warning("Error removing player from teams: " + e.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error removing player from teams", e);
         }
     }
     
@@ -143,7 +140,7 @@ public class ClanDisplayService {
             player.displayName(displayName);
             player.playerListName(displayName);
         } catch (Exception e) {
-            plugin.getLogger().warning("Error updating display name: " + e.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error updating display name", e);
         }
     }
     
@@ -155,7 +152,7 @@ public class ClanDisplayService {
             player.displayName(Component.text(player.getName()));
             player.playerListName(Component.text(player.getName()));
         } catch (Exception e) {
-            plugin.getLogger().warning("Error resetting display name: " + e.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error resetting display name", e);
         }
     }
     
@@ -173,7 +170,7 @@ public class ClanDisplayService {
             if (level >= 5) return NamedTextColor.AQUA;
             return NamedTextColor.GRAY;
         } catch (Exception e) {
-            plugin.getLogger().warning("Error getting tag color: " + e.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error getting tag color", e);
             return NamedTextColor.GRAY;
         }
     }
@@ -191,12 +188,12 @@ public class ClanDisplayService {
                             updatePlayerDisplay(player);
                         }
                     } catch (Exception e) {
-                        plugin.getLogger().warning("Error updating clan member display: " + e.getMessage());
+                        plugin.getLogger().log(java.util.logging.Level.WARNING, "Error updating clan member display", e);
                     }
                 }
             });
         }).exceptionally(ex -> {
-            plugin.getLogger().warning("Error updating clan display: " + ex.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error updating clan display", ex);
             return null;
         });
     }
@@ -212,7 +209,7 @@ public class ClanDisplayService {
                 team.unregister();
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("Error removing clan team: " + e.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error removing clan team", e);
         }
     }
     
@@ -237,7 +234,7 @@ public class ClanDisplayService {
                 updatePlayerDisplay(player);
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("Error initializing display service: " + e.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error initializing display service", e);
         }
     }
     
@@ -266,7 +263,7 @@ public class ClanDisplayService {
                 }
             }
         } catch (Exception e) {
-            plugin.getLogger().warning("Error shutting down display service: " + e.getMessage());
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "Error shutting down display service", e);
         }
     }
 }

@@ -13,7 +13,7 @@ import com.cruiser.clans.listener.PlayerListener;
 import com.cruiser.clans.listener.RegionMarkerListener;
 import com.cruiser.clans.listener.RegionProtectionListener;
 import com.cruiser.clans.orm.DataManager;
-import com.cruiser.clans.orm.OrmManager;
+import com.cruiser.clans.orm.Database;
 import com.cruiser.clans.service.ClanDisplayService;
 import com.cruiser.clans.service.ClanChatService;
 import com.cruiser.clans.service.ClanMemberService;
@@ -26,7 +26,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 public final class ClanPlugin extends JavaPlugin {
     
     private Logger slf4jLogger;
-    private OrmManager ormManager;
+    private Database database;
     private DataManager dataManager;
     private ClanDisplayService displayService;
     private ClanService clanService;
@@ -47,11 +47,11 @@ public final class ClanPlugin extends JavaPlugin {
         try {
             // Инициализация ORM
             getLogger().info("Инициализация базы данных...");
-            this.ormManager = new OrmManager(this);
-            this.ormManager.start();
+            this.database = new Database(this);
+            this.database.start();
             
             // Инициализация менеджера данных
-            this.dataManager = new DataManager(this, ormManager);
+            this.dataManager = new DataManager(this, database);
             
             // Инициализация сервисов
             this.displayService = new ClanDisplayService(this);
@@ -93,8 +93,8 @@ public final class ClanPlugin extends JavaPlugin {
         }
 
         // Закрытие ORM
-        if (ormManager != null) {
-            ormManager.stop();
+        if (database != null) {
+            database.stop();
         }
         
         getComponentLogger().info(Component.text("ClanPlugin выключен", NamedTextColor.RED));
@@ -171,10 +171,6 @@ public final class ClanPlugin extends JavaPlugin {
 
     public ClanRegionService getRegionService() {
         return regionService;
-    }
-    
-    public OrmManager getOrmManager() {
-        return ormManager;
     }
     
     public Logger getSLF4J() {

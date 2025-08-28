@@ -10,6 +10,10 @@ website: https://github.com/cruiser/ClanPlugin
 softdepend: []
 depend: []
 
+# Paper will download these and put them on the classpath
+libraries:
+  - org.xerial:sqlite-jdbc:3.49.1.0
+
 # Права
 permissions:
   clan.use:
